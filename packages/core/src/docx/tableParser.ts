@@ -46,6 +46,11 @@ import type {
 import type { StyleMap } from './styleParser';
 import type { NumberingMap } from './numberingParser';
 import { parseParagraph } from './paragraphParser';
+// Shared with the body/header/footer parser (blockContentParser): a paragraph
+// inside a table cell needs the same anchored-text-box enrichment pass, or a
+// text box anchored from a run in a cell is dropped at parse.
+import { enrichParagraphTextBoxes } from './blockContentParser';
+import { BlockMarkerCollector, parseBlockMarker } from './bookmarkParser';
 import {
   findChild,
   findChildren,
@@ -561,30 +566,54 @@ function parseCellContent(
   // Get all child elements
   const elements = tcElement.elements || [];
 
+  // Capture block-level bookmark markers that sit directly between block
+  // elements inside the cell (e.g. `</w:p><w:bookmarkEnd/><w:p>`), which the
+  // (Paragraph | Table) cell content model has no slot for otherwise.
+  const markers = new BlockMarkerCollector();
+
   for (const child of elements) {
     if (!child.name) continue;
+
+    // Block-level bookmark marker between paragraphs/tables in the cell.
+    const marker = parseBlockMarker(child);
+    if (marker) {
+      markers.addMarker(marker);
+      continue;
+    }
 
     const localName = child.name.split(':').pop();
 
     if (localName === 'p') {
       // Parse paragraph
       const para = parseParagraph(child, styles, theme, numbering, rels, media, options);
+      // Enrich with anchored text boxes, exactly as the body/header/footer
+      // parser does — otherwise a text box anchored from a run inside this cell
+      // is silently dropped at parse.
+      enrichParagraphTextBoxes(para, child, styles, theme, numbering, rels, media);
       content.push(para);
+      markers.onBlockPushed(para);
     } else if (localName === 'tbl') {
       // Parse nested table (recursive)
       const table = parseTable(child, styles, theme, numbering, rels, media, options);
       content.push(table);
+      markers.onBlockPushed(table);
     }
     // Other content types in cells are rare but could be added
   }
 
-  // Ensure at least one empty paragraph (Word requires this)
+  // Ensure at least one empty paragraph (Word requires this). Do this BEFORE
+  // finalize() so a cell whose only children are bookmark markers (no w:p) has
+  // a block for those markers to ride on instead of dropping them.
   if (content.length === 0) {
     content.push({
       type: 'paragraph',
       content: [],
     });
+    markers.onBlockPushed(content[0]);
   }
+
+  // Flush any markers buffered after the last block.
+  markers.finalize();
 
   return content;
 }

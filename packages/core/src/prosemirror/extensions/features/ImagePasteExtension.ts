@@ -10,6 +10,7 @@ import type { EditorView } from 'prosemirror-view';
 import { createExtension } from '../create';
 import type { ExtensionRuntime } from '../types';
 import { getClipboardImageFiles } from '../../../utils/clipboard';
+import { clipboardHasRichText } from '../../../utils/clipboardRichText';
 
 const MAX_INLINE_IMAGE_WIDTH = 612; // ~6.375 inches at 96 DPI
 
@@ -91,6 +92,15 @@ export const ImagePasteExtension = createExtension({
         handleDOMEvents: {
           paste(view, event) {
             const clipboardEvent = event as ClipboardEvent;
+
+            // Copying from Word (and many rich editors) puts a bitmap snapshot of
+            // the selection on the clipboard next to the real HTML. Defer to the
+            // normal HTML paste pipeline when that rich text is present so text and
+            // styles are preserved instead of inserting the snapshot as an image.
+            if (clipboardHasRichText(clipboardEvent.clipboardData)) {
+              return false;
+            }
+
             const imageFiles = getClipboardImageFiles(clipboardEvent.clipboardData);
 
             if (imageFiles.length === 0) {

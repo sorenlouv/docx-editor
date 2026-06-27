@@ -137,4 +137,38 @@ describe('extendMarginsForHeaderFooter', () => {
     });
     expect(bodyBlocks[0].margins.top).toBe(347);
   });
+
+  test('a section whose own margins are thin extends even when the body section does not', () => {
+    // Regression: the overflow decision was computed once from the BODY margins
+    // and applied to every section. A landscape table section with a thin 0.5in
+    // bottom margin (≈ the footer distance) embedded in a 1in-margin portrait
+    // body never grew its footer band — the footer overlapped the footnote area
+    // and the page number rode up beside the last footnote instead of sitting
+    // below it. The decision must use each section's OWN margins.
+    const bodyMargins: PageMargins = {
+      top: 96,
+      right: 96,
+      bottom: 96,
+      left: 96,
+      header: 47,
+      footer: 47,
+    };
+    const landscapeBreak = {
+      kind: 'sectionBreak' as const,
+      // Thin 0.5in margins; footer distance 47px leaves only ~1px of band.
+      margins: { top: 48, right: 48, bottom: 48, left: 48, header: 47, footer: 47 },
+    };
+    const { margins } = extendMarginsForHeaderFooter({
+      pageSize: { w: 1056, h: 816 }, // landscape Letter
+      margins: bodyMargins,
+      finalMargins: bodyMargins,
+      bodyBlocks: [landscapeBreak] as never,
+      footers: [hf({ flowHeight: 20 })],
+    });
+
+    // Body section: footer 20 fits in 96 - 47 = 49 → unchanged.
+    expect(margins.bottom).toBe(96);
+    // Landscape section: footer 20 > 48 - 47 = 1 → grow to footerDistance + band.
+    expect(landscapeBreak.margins.bottom).toBe(67);
+  });
 });

@@ -193,8 +193,19 @@ export function footnoteToProseDoc(content: BlockContent[], options?: ToProseDoc
 // @public
 export function fromProseDoc(pmDoc: Node_2, baseDocument?: Document_2): Document_2;
 
+// @public
+export function generateTableOfContents(options?: GenerateTOCOptions): Command;
+
 // @public (undocumented)
 export const generateTOC: Command;
+
+// @public
+export interface GenerateTOCOptions {
+    includeHyperlinks?: boolean;
+    maxLevel?: number;
+    minLevel?: number;
+    title?: string | null;
+}
 
 // @public
 export function getDefaultTableStyleId(state: EditorState): string | null;
@@ -384,6 +395,7 @@ export interface ParagraphAttrs {
     keepLines?: boolean;
     // (undocumented)
     keepNext?: boolean;
+    leadingBlockMarkers?: BlockBookmarkMarkers;
     // (undocumented)
     lineSpacing?: number;
     // (undocumented)
@@ -398,6 +410,7 @@ export interface ParagraphAttrs {
     listMarkerSuffix?: 'tab' | 'space' | 'nothing';
     listNumFmt?: NumberFormat;
     listStartOverride?: number;
+    loneBookmarkEndIds?: number[];
     // (undocumented)
     numPr?: {
         numId?: number;
@@ -440,6 +453,7 @@ export interface ParagraphAttrs {
     tabs?: TabStop[];
     // (undocumented)
     textId?: string;
+    trailingBlockMarkers?: BlockBookmarkMarkers;
 }
 
 // @public

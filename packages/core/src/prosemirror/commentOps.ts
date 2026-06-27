@@ -11,15 +11,22 @@ import type { Comment } from '../types/content';
 import type { CommentIdAllocator } from './commentIdAllocator';
 import { findParaIdRange, findTextInPmParagraph } from './paraText';
 
-/** Build a Comment object with a freshly-allocated ID. */
+/**
+ * Build a Comment object. By default the ID is freshly allocated; pass `id` to
+ * adopt a specific OOXML comment id (e.g. one assigned by an external
+ * source-of-truth model) — the allocator is seeded above it so later mints never
+ * collide.
+ */
 export function createComment(
   allocator: CommentIdAllocator,
   text: string,
   authorName: string,
-  parentId?: number
+  parentId?: number,
+  id?: number
 ): Comment {
+  if (id !== undefined) allocator.seedAbove(id);
   return {
-    id: allocator.next(),
+    id: id ?? allocator.next(),
     author: authorName,
     date: new Date().toISOString(),
     content: [
@@ -38,6 +45,12 @@ export interface AddCommentOptions {
   text: string;
   author: string;
   search?: string;
+  /**
+   * Adopt a specific OOXML comment id instead of minting a fresh one. Use when
+   * an external source-of-truth model (e.g. @beyondwork/docx-react-component)
+   * already assigned the id and the preview must mirror it under the same id.
+   */
+  commentId?: number;
 }
 
 /**
@@ -70,7 +83,13 @@ export function addCommentToRange(
   // commentRangeStart/End anchor in document.xml.
   if (from >= to) return null;
 
-  const comment = createComment(allocator, options.text, options.author);
+  const comment = createComment(
+    allocator,
+    options.text,
+    options.author,
+    undefined,
+    options.commentId
+  );
   view.dispatch(
     view.state.tr.addMark(from, to, schema.marks.comment.create({ commentId: comment.id }))
   );
@@ -82,6 +101,14 @@ export interface ProposeChangeOptions {
   search: string;
   replaceWith: string;
   author: string;
+  /**
+   * Adopt a specific OOXML revision id (w:id) for the ins/del marks instead of
+   * minting one. Use when an external source-of-truth model (e.g.
+   * @beyondwork/docx-react-component) already authored the change and assigned
+   * the id, so the preview reflects it under the same id (later acceptChange/
+   * rejectChange then resolve by that shared id).
+   */
+  revisionId?: number;
 }
 
 /**
@@ -133,7 +160,8 @@ export function applyProposedChange(
     if (overlaps) return false;
   }
 
-  const revisionId = allocator.next();
+  if (options.revisionId !== undefined) allocator.seedAbove(options.revisionId);
+  const revisionId = options.revisionId ?? allocator.next();
   const date = new Date().toISOString();
   const deletionMark = schema.marks.deletion.create({ revisionId, author: options.author, date });
   const insertionMark = schema.marks.insertion.create({ revisionId, author: options.author, date });

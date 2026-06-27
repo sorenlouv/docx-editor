@@ -114,6 +114,12 @@
       "resolveComment": "Inherited via EditorRefLike. Identical signature on both adapters.",
       "setParagraphStyle": "Inherited via EditorRefLike. Identical signature on both adapters."
     },
+    "deferredInVue": {
+      "acceptChange": "React-only (feat(react) ff971a7b). Accept a tracked change by w:id in place. Vue parity pending.",
+      "rejectChange": "React-only (feat(react) ff971a7b). Reject a tracked change by w:id in place. Vue parity pending.",
+      "undo": "React-only (feat(react) ff971a7b). Undo the last in-place edit (e.g. acceptChange). Vue parity pending.",
+      "redo": "React-only (feat(react) ff971a7b). Redo the last undone in-place edit. Vue parity pending."
+    },
     "vueExclusive": {
       "destroy": "Vue's component-level imperative teardown. React's DocxEditorRef omits this because React handles unmount automatically; both adapters expose `destroy` via their `renderAsync()` return (DocxEditorHandle from core's EditorHandle base)."
     }

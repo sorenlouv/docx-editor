@@ -770,7 +770,11 @@ export function applyControlMutation(
         const part = parts.get(rId)!;
         const nextContent = applyToFirstControl(part.content, filter, blockOp, inlineOp, state);
         if (nextContent !== part.content) {
-          next = rebuildPart(next, kind, rId, { ...part, content: nextContent });
+          next = rebuildPart(next, kind, rId, {
+            ...part,
+            content: nextContent,
+            verbatimXml: undefined,
+          });
         }
         if (walkDone(state)) return next;
       }

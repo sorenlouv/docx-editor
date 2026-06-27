@@ -665,6 +665,9 @@ describe('Selective save with headers/footers', () => {
             formatting: {},
             content: [{ type: 'text', text: ' [HF_MODIFIED]' }],
           });
+          // Direct model mutation must drop the captured original XML so the
+          // serializer rebuilds from `content` instead of replaying it.
+          hf.verbatimXml = undefined;
           break;
         }
       }

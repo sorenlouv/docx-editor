@@ -96,6 +96,8 @@ export function useCommentManagement(opts: UseCommentManagementOptions) {
     text: string;
     author: string;
     search?: string;
+    /** Adopt an externally-assigned OOXML comment id instead of minting one. */
+    commentId?: number;
   }): number | null {
     const doc = opts.getDocument();
     const view = opts.editorView.value;
@@ -146,6 +148,8 @@ export function useCommentManagement(opts: UseCommentManagementOptions) {
     search: string;
     replaceWith: string;
     author: string;
+    /** Adopt an externally-assigned OOXML revision id (w:id) instead of minting one. */
+    revisionId?: number;
   }): boolean {
     const view = opts.editorView.value;
     if (!view) return false;

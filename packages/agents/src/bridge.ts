@@ -67,6 +67,8 @@ export interface EditorRefLike {
     text: string;
     author: string;
     search?: string;
+    /** Adopt an externally-assigned OOXML comment id instead of minting one. */
+    commentId?: number;
   }): number | null;
   replyToComment(commentId: number, text: string, author: string): number | null;
   resolveComment(commentId: number): void;
@@ -75,6 +77,8 @@ export interface EditorRefLike {
     search: string;
     replaceWith: string;
     author: string;
+    /** Adopt an externally-assigned OOXML revision id (w:id) instead of minting one. */
+    revisionId?: number;
   }): boolean;
   scrollToParaId(paraId: string, options?: ScrollToParaIdOptions): boolean;
   findInDocument(

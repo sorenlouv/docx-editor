@@ -78,6 +78,7 @@ export interface EditorRefLike {
         text: string;
         author: string;
         search?: string;
+        commentId?: number;
     }): number | null;
     applyFormatting(options: {
         paraId: string;
@@ -123,6 +124,7 @@ export interface EditorRefLike {
         search: string;
         replaceWith: string;
         author: string;
+        revisionId?: number;
     }): boolean;
     // (undocumented)
     replyToComment(commentId: number, text: string, author: string): number | null;

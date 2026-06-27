@@ -82,24 +82,32 @@ export function extendMarginsForHeaderFooter(
 ): ExtendMarginsForHeaderFooterResult {
   const { pageSize, margins, finalMargins, bodyBlocks, headers, footers, warn } = input;
 
-  const headerDistance = margins.header ?? DEFAULT_HF_DISTANCE_PX;
-  const footerDistance = margins.footer ?? DEFAULT_HF_DISTANCE_PX;
-  const availableHeaderSpace = margins.top - headerDistance;
-  const availableFooterSpace = margins.bottom - footerDistance;
-
   const headerContentHeight = Math.max(0, ...(headers ?? []).map(bandHeight));
   const footerContentHeight = Math.max(0, ...(footers ?? []).map(bandHeight));
 
-  const extendHeader = headerContentHeight > availableHeaderSpace;
-  const extendFooter = footerContentHeight > availableFooterSpace;
-  if (!extendHeader && !extendFooter) {
+  // No header/footer content anywhere → nothing can push a body margin.
+  if (headerContentHeight === 0 && footerContentHeight === 0) {
     return { margins, finalMargins };
   }
 
   const maxMargins = Math.max(0, pageSize.h - MIN_CONTENT_HEIGHT_PX);
   let clamped = false;
 
+  // Whether the band overflows is decided PER margin set, using that set's own
+  // top/bottom and header/footer distances — not the body section's. A document
+  // can mix sections whose margins differ (e.g. a landscape table section with a
+  // thin 0.5in bottom margin embedded in a 1in-margin portrait body): the footer
+  // fits the body's roomy margin yet overflows the landscape section's thin one,
+  // so the band must grow there alone. Deciding once from the body margins left
+  // the landscape footer overlapping the footnote area / body text (the page
+  // number rode up next to the last footnote instead of sitting below it).
   const extend = (m: PageMargins): PageMargins => {
+    const headerDistance = m.header ?? DEFAULT_HF_DISTANCE_PX;
+    const footerDistance = m.footer ?? DEFAULT_HF_DISTANCE_PX;
+    const extendHeader = headerContentHeight > m.top - headerDistance;
+    const extendFooter = footerContentHeight > m.bottom - footerDistance;
+    if (!extendHeader && !extendFooter) return m;
+
     const out = { ...m };
     if (extendHeader) out.top = Math.max(m.top, headerDistance + headerContentHeight);
     if (extendFooter) out.bottom = Math.max(m.bottom, footerDistance + footerContentHeight);

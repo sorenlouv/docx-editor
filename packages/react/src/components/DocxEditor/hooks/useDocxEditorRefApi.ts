@@ -31,6 +31,7 @@ import type { DocxInput, ScrollToParaIdOptions } from '@eigenpal/docx-editor-cor
 import { getCachedNumberingMap } from '@eigenpal/docx-editor-core/docx';
 import type { DocxEditorRef } from '../../DocxEditor';
 import type { PagedEditorRef } from '../PagedEditor';
+import { resolveTrackedChangeById } from '../resolveTrackedChangeById';
 import {
   addCommentToRange,
   applyProposedChange,
@@ -62,6 +63,7 @@ export function useDocxEditorRefApi({
   comments,
   setComments,
   setShowCommentsSidebar,
+  setHfVersion,
   contentChangeSubscribersRef,
   selectionChangeSubscribersRef,
   getCachedStyleResolver,
@@ -82,6 +84,7 @@ export function useDocxEditorRefApi({
   comments: Comment[];
   setComments: React.Dispatch<React.SetStateAction<Comment[]>>;
   setShowCommentsSidebar: React.Dispatch<React.SetStateAction<boolean>>;
+  setHfVersion: React.Dispatch<React.SetStateAction<number>>;
   contentChangeSubscribersRef: React.RefObject<Set<(doc: Document) => void>>;
   selectionChangeSubscribersRef: React.RefObject<Set<(state: SelectionState | null) => void>>;
   getCachedStyleResolver: (
@@ -135,6 +138,16 @@ export function useDocxEditorRefApi({
         setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, done: true } : c)));
       },
 
+      acceptChange: (revisionId) =>
+        resolveTrackedChangeById(pagedEditorRef, revisionId, 'accept', () =>
+          setHfVersion((v) => v + 1)
+        ),
+
+      rejectChange: (revisionId) =>
+        resolveTrackedChangeById(pagedEditorRef, revisionId, 'reject', () =>
+          setHfVersion((v) => v + 1)
+        ),
+
       proposeChange: (options) => {
         const view = pagedEditorRef.current?.getView();
         if (!view) return false;
@@ -187,6 +200,9 @@ export function useDocxEditorRefApi({
       highlightRange: (from, to) => {
         pagedEditorRef.current?.highlightRange(from, to);
       },
+
+      undo: () => pagedEditorRef.current?.undo() ?? false,
+      redo: () => pagedEditorRef.current?.redo() ?? false,
 
       findInDocument: (query, opts) =>
         findInDocumentCore(pagedEditorRef.current?.getView() ?? null, query, opts),

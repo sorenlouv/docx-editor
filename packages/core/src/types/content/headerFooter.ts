@@ -41,6 +41,15 @@ export interface HeaderFooter {
    * still round-tripping. Only headers carry watermarks; footers never do.
    */
   watermark?: Watermark;
+  /**
+   * Verbatim original XML of the entire header/footer part, captured at parse
+   * time. When present and the header hasn't been edited, the serializer
+   * re-emits these bytes instead of rebuilding from `content`, so constructs
+   * the model can't fully represent (`w:object` OLE wrappers, `w:smartTag`,
+   * arbitrary VML) round-trip byte-identically. The HF inline editor clears
+   * this on the first edit. Mirrors `Footnote.verbatimXml`.
+   */
+  verbatimXml?: string;
 }
 
 /**

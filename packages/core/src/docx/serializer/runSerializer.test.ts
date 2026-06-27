@@ -165,6 +165,99 @@ describe('shape EMU attributes are integer-only (issue #417)', () => {
   });
 });
 
+// AlternateContent>Choice>wps textboxes are parsed with shapeType:'rect' but
+// still carry text in their txbxContent. The serializer must emit the
+// w:txbxContent based on text presence, not on geometry, or every run inside
+// the shape is silently dropped (e.g. footer banners and
+// title boxes).
+const RECT_SHAPE_WITH_TEXT: Run = {
+  type: 'run',
+  content: [
+    {
+      type: 'shape',
+      shape: {
+        type: 'shape',
+        shapeType: 'rect',
+        size: { width: 2540000, height: 1270000 },
+        textBody: {
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'run', content: [{ type: 'text', text: 'Internal Review Copy' }] }],
+            },
+          ],
+        },
+      },
+    },
+  ],
+};
+
+const RECT_SHAPE_NO_TEXT: Run = {
+  type: 'run',
+  content: [
+    {
+      type: 'shape',
+      shape: {
+        type: 'shape',
+        shapeType: 'rect',
+        size: { width: 2540000, height: 1270000 },
+      },
+    },
+  ],
+};
+
+const TEXTBOX_WITH_TEXT: Run = {
+  type: 'run',
+  content: [
+    {
+      type: 'shape',
+      shape: {
+        type: 'shape',
+        shapeType: 'textBox',
+        size: { width: 2540000, height: 1270000 },
+        textBody: {
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'run', content: [{ type: 'text', text: 'Statement of Work' }] }],
+            },
+          ],
+        },
+      },
+    },
+  ],
+};
+
+describe('shape text body is gated on text presence, not geometry', () => {
+  test('rect shape with non-empty text body serializes a w:txbxContent with the run text', () => {
+    const xml = serializeRun(RECT_SHAPE_WITH_TEXT);
+
+    expect(xml).toContain('<w:txbxContent>');
+    expect(xml).toContain('Internal Review Copy');
+    expect(xml).toContain('</w:txbxContent>');
+    // cNvSpPr must declare txBox="1" so Word treats the rect as a text shape.
+    expect(xml).toContain('<wps:cNvSpPr txBox="1"/>');
+    // Geometry stays rect (prstGeom), text presence does not change it.
+    expect(xml).toContain('<a:prstGeom prst="rect">');
+  });
+
+  test('rect shape without text emits no txbxContent and no txBox flag', () => {
+    const xml = serializeRun(RECT_SHAPE_NO_TEXT);
+
+    expect(xml).not.toContain('<w:txbxContent>');
+    expect(xml).not.toContain('txBox="1"');
+    expect(xml).toContain('<wps:cNvSpPr/>');
+  });
+
+  test('textBox with text still emits txbxContent and txBox flag', () => {
+    const xml = serializeRun(TEXTBOX_WITH_TEXT);
+
+    expect(xml).toContain('<w:txbxContent>');
+    expect(xml).toContain('Statement of Work');
+    expect(xml).toContain('<wps:cNvSpPr txBox="1"/>');
+  });
+});
+
 describe('run formatting integer attributes (issue #417)', () => {
   test('font size, character spacing, scale, kern, position render as integers', () => {
     const run: Run = {

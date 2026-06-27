@@ -20,6 +20,108 @@ import type { BookmarkStart, BookmarkEnd } from '../types/document';
 import { getAttribute, parseNumericAttribute, type XmlElement } from './xmlParser';
 
 // ============================================================================
+// BLOCK-LEVEL MARKER CAPTURE
+// ============================================================================
+
+/** A block that can carry orphaned block-level bookmark markers. */
+interface BlockMarkerCarrier {
+  leadingBlockMarkers?: (BookmarkStart | BookmarkEnd)[];
+  trailingBlockMarkers?: (BookmarkStart | BookmarkEnd)[];
+}
+
+/**
+ * Collects `w:bookmarkStart`/`w:bookmarkEnd` markers that sit as direct
+ * children of a block container (`w:body`/`w:tc`/`w:sdtContent`) BETWEEN
+ * block elements (paragraphs/tables/SDTs). The block content model only
+ * carries paragraphs/tables/SDTs, so a marker between two paragraphs
+ * (`</w:p><w:bookmarkEnd/><w:p>`) has no home and is otherwise dropped.
+ *
+ * The carrier rides each contiguous run of markers on the block that
+ * FOLLOWS it (as `leadingBlockMarkers`), preserving the markers' original
+ * order. The position between two blocks is identical whether the run is the
+ * trailing of the previous block or the leading of the next, so attaching to
+ * the following block reproduces the exact `</w:p><w:bookmarkEnd/><w:p>`
+ * shape while keeping start/end markers in document order — critical when a
+ * cluster of starts is immediately followed by a cluster of ends between the
+ * same two blocks (splitting them across two carriers would invert the run
+ * and produce end-before-start orphans).
+ *
+ * Only markers AFTER the last block (no following block, e.g. a trailing
+ * `w:bookmarkEnd` at the very end of a cell) fall back to
+ * `trailingBlockMarkers` on the last block so nothing is lost.
+ *
+ * Usage: call {@link addMarker} for each `w:bookmarkStart`/`w:bookmarkEnd`
+ * child as it is encountered, {@link onBlockPushed} immediately after each
+ * block is appended to the output, and {@link finalize} once after the loop.
+ */
+export class BlockMarkerCollector {
+  /** Markers seen since the last block, to attach as the next block's leading. */
+  private pending: (BookmarkStart | BookmarkEnd)[] = [];
+  /** The most recently pushed block (fallback trailing target at container end). */
+  private lastBlock: BlockMarkerCarrier | null = null;
+
+  /**
+   * Record a `w:bookmarkStart`/`w:bookmarkEnd` child seen at the current
+   * position in the block stream. Markers are buffered in document order and
+   * resolved to a carrier when the next block is pushed (or at finalize).
+   */
+  addMarker(marker: BookmarkStart | BookmarkEnd): void {
+    this.pending.push(marker);
+  }
+
+  /**
+   * Flush the buffered marker run onto the block that was just pushed (as its
+   * leading markers, in original order), and remember it as the fallback
+   * trailing target for any run that ends the container.
+   */
+  onBlockPushed(block: BlockMarkerCarrier): void {
+    if (this.pending.length > 0) {
+      (block.leadingBlockMarkers ??= []).push(...this.pending);
+      this.pending = [];
+    }
+    this.lastBlock = block;
+  }
+
+  /**
+   * Attach any markers still buffered after the last block (e.g. a
+   * `w:bookmarkEnd` at the very end of the container with no following block)
+   * as trailing markers on the last block so nothing is lost.
+   */
+  finalize(): void {
+    if (this.pending.length > 0 && this.lastBlock) {
+      (this.lastBlock.trailingBlockMarkers ??= []).push(...this.pending);
+      this.pending = [];
+    }
+  }
+
+  /**
+   * Whether any markers are buffered but not yet attached to a block. A caller
+   * can use this to detect a container whose ONLY children are markers (no
+   * paragraph/table/SDT for them to ride on) and insert a placeholder block
+   * before {@link finalize}, so the markers are not silently dropped.
+   */
+  hasPendingMarkers(): boolean {
+    return this.pending.length > 0;
+  }
+}
+
+/**
+ * If an element is a `w:bookmarkStart`/`w:bookmarkEnd`, parse it and return
+ * the model marker; otherwise return null. Used by block-content walkers to
+ * detect markers that sit directly between block elements.
+ */
+export function parseBlockMarker(child: XmlElement): BookmarkStart | BookmarkEnd | null {
+  const name = child.name ?? '';
+  if (name === 'w:bookmarkStart' || name.endsWith(':bookmarkStart')) {
+    return parseBookmarkStart(child);
+  }
+  if (name === 'w:bookmarkEnd' || name.endsWith(':bookmarkEnd')) {
+    return parseBookmarkEnd(child);
+  }
+  return null;
+}
+
+// ============================================================================
 // BOOKMARK PARSING
 // ============================================================================
 

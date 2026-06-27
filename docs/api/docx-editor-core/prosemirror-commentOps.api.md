@@ -10,6 +10,7 @@ import { EditorView } from 'prosemirror-view';
 export interface AddCommentOptions {
     // (undocumented)
     author: string;
+    commentId?: number;
     // (undocumented)
     paraId: string;
     // (undocumented)
@@ -25,7 +26,7 @@ export function addCommentToRange(view: EditorView, options: AddCommentOptions, 
 export function applyProposedChange(view: EditorView, options: ProposeChangeOptions, allocator: CommentIdAllocator): boolean;
 
 // @public
-export function createComment(allocator: CommentIdAllocator, text: string, authorName: string, parentId?: number): Comment_2;
+export function createComment(allocator: CommentIdAllocator, text: string, authorName: string, parentId?: number, id?: number): Comment_2;
 
 // @public (undocumented)
 export interface ProposeChangeOptions {
@@ -35,6 +36,7 @@ export interface ProposeChangeOptions {
     paraId: string;
     // (undocumented)
     replaceWith: string;
+    revisionId?: number;
     // (undocumented)
     search: string;
 }

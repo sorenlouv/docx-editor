@@ -187,6 +187,8 @@ export function parseHeader(
     return result;
   }
 
+  result.verbatimXml = headerXml;
+
   const doc = parseXml(headerXml);
   if (!doc) {
     return result;
@@ -248,6 +250,8 @@ export function parseFooter(
   if (!footerXml) {
     return result;
   }
+
+  result.verbatimXml = footerXml;
 
   const doc = parseXml(footerXml);
   if (!doc) {

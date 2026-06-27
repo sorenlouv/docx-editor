@@ -16,6 +16,7 @@ import type { Document, Theme } from '@eigenpal/docx-editor-core/types/document'
 import { cn } from '../lib/utils';
 import { type SelectionFormatting } from './Toolbar';
 import type { AgentPanelOptions } from './DocxEditor/types';
+import { resolveTrackedChangeById } from './DocxEditor/resolveTrackedChangeById';
 import { useOutlineSidebar } from './DocxEditor/hooks/useOutlineSidebar';
 import { useKeyboardShortcuts } from './DocxEditor/hooks/useKeyboardShortcuts';
 import { useFileIO } from './DocxEditor/hooks/useFileIO';
@@ -86,12 +87,7 @@ import {
   type PMContentControl,
 } from '@eigenpal/docx-editor-core/prosemirror';
 import type { ContentControlFilter, ContentControlValue } from '@eigenpal/docx-editor-core/agent';
-import {
-  acceptChange,
-  rejectChange,
-  acceptChangeById,
-  rejectChangeById,
-} from '@eigenpal/docx-editor-core/prosemirror/commands';
+import { acceptChange, rejectChange } from '@eigenpal/docx-editor-core/prosemirror/commands';
 import { collectHeadings } from '@eigenpal/docx-editor-core/utils';
 import {
   prefersColorSchemeDark,
@@ -390,6 +386,22 @@ export interface DocxEditorRef {
    */
   scrollToChangeId: (revisionId: number) => boolean;
   /**
+   * Accept a tracked change by its Word revision `w:id`. Resolves every site of
+   * the revision (inline insertion/deletion marks plus paragraph-mark and
+   * structural revisions) in a single transaction — updating the view in place,
+   * no reload.
+   * @returns `false` when the revision id is not present.
+   * @example ref.current?.acceptChange(42)
+   */
+  acceptChange: (revisionId: number) => boolean;
+  /**
+   * Reject a tracked change by its Word revision `w:id`. Inverse of
+   * {@link acceptChange} — insertions are removed, deletions keep their text.
+   * @returns `false` when the revision id is not present.
+   * @example ref.current?.rejectChange(42)
+   */
+  rejectChange: (revisionId: number) => boolean;
+  /**
    * Select the ProseMirror position range `[from, to]` so the selection
    * overlay highlights it, and scroll its start into view. The selection
    * persists until it next changes (there is no auto-clearing flash). No-op
@@ -398,6 +410,17 @@ export interface DocxEditorRef {
    * @example ref.current?.highlightRange(10, 24)
    */
   highlightRange: (from: number, to: number) => void;
+  /**
+   * Undo / redo the last history-recorded edit IN PLACE — e.g. an
+   * `acceptChange` / `rejectChange` — without reloading the document, so the
+   * view and scroll position are preserved. Only edits that produce document
+   * changes are recorded: selection-only changes (scroll / locate) carry no
+   * steps and are never undone. Returns `false` when there is nothing to undo /
+   * redo.
+   * @example ref.current?.undo()
+   */
+  undo: () => boolean;
+  redo: () => boolean;
   /** Open print preview */
   openPrintPreview: () => void;
   /** Print the document directly */
@@ -415,6 +438,10 @@ export interface DocxEditorRef {
     author: string;
     /** Optional: anchor to a specific phrase within the paragraph (must be unique). */
     search?: string;
+    /** Optional: adopt an externally-assigned OOXML comment id instead of minting
+     * one — e.g. to mirror a comment an external source-of-truth model already
+     * authored, so both stay addressable by the same id. */
+    commentId?: number;
   }) => number | null;
   /** Reply to an existing comment. Returns the reply comment ID. */
   replyToComment: (commentId: number, text: string, author: string) => number | null;
@@ -428,6 +455,11 @@ export interface DocxEditorRef {
     search: string;
     replaceWith: string;
     author: string;
+    /** Optional: adopt an externally-assigned OOXML revision id (w:id) instead of
+     * minting one — e.g. to mirror a tracked change an external source-of-truth
+     * model already authored, so a later acceptChange/rejectChange resolves it by
+     * the same shared id. */
+    revisionId?: number;
   }) => boolean;
   /** Locate every paragraph containing `query` (case-insensitive substring).
    * Returns a stable handle (paraId + the matched phrase) the agent can pass
@@ -1277,6 +1309,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     comments,
     setComments,
     setShowCommentsSidebar,
+    setHfVersion,
     contentChangeSubscribersRef,
     selectionChangeSubscribersRef,
     getCachedStyleResolver,
@@ -1413,58 +1446,14 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
       if (view) rejectChange(from, to)(view.state, view.dispatch);
     },
     onAcceptChangeById: (revisionId) => {
-      const hfViews = pagedEditorRef.current?.getHfPmViews?.();
-      let targetView = null;
-      if (hfViews) {
-        for (const view of hfViews.values()) {
-          const { entries } = extractTrackedChanges(view.state);
-          if (
-            entries.some(
-              (e) =>
-                e.revisionId === revisionId ||
-                e.insertionRevisionId === revisionId ||
-                e.coalescedRevisionIds?.includes(revisionId)
-            )
-          ) {
-            targetView = view;
-            break;
-          }
-        }
-      }
-      const view = targetView || pagedEditorRef.current?.getView();
-      if (view) {
-        acceptChangeById(revisionId)(view.state, view.dispatch);
-        if (targetView) {
-          setHfVersion((prev) => prev + 1);
-        }
-      }
+      resolveTrackedChangeById(pagedEditorRef, revisionId, 'accept', () =>
+        setHfVersion((prev) => prev + 1)
+      );
     },
     onRejectChangeById: (revisionId) => {
-      const hfViews = pagedEditorRef.current?.getHfPmViews?.();
-      let targetView = null;
-      if (hfViews) {
-        for (const view of hfViews.values()) {
-          const { entries } = extractTrackedChanges(view.state);
-          if (
-            entries.some(
-              (e) =>
-                e.revisionId === revisionId ||
-                e.insertionRevisionId === revisionId ||
-                e.coalescedRevisionIds?.includes(revisionId)
-            )
-          ) {
-            targetView = view;
-            break;
-          }
-        }
-      }
-      const view = targetView || pagedEditorRef.current?.getView();
-      if (view) {
-        rejectChangeById(revisionId)(view.state, view.dispatch);
-        if (targetView) {
-          setHfVersion((prev) => prev + 1);
-        }
-      }
+      resolveTrackedChangeById(pagedEditorRef, revisionId, 'reject', () =>
+        setHfVersion((prev) => prev + 1)
+      );
     },
     onTrackedChangeReply: (revisionId, text) => {
       setComments((prev) => [

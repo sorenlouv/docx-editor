@@ -1,0 +1,60 @@
+{
+  "name": "@sqren/docx-editor",
+  "version": "1.0.1",
+  "description": "Single bundled distribution of the docx-editor fork (read-only DOCX renderer + editor). Bundles @eigenpal/docx-editor-{core,react,i18n,agents} into one package; react/react-dom/prosemirror stay as peer deps.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "build": "tsup && cp ../react/dist/styles.css ./dist/styles.css",
+    "prepublishOnly": "bun run build"
+  },
+  "peerDependencies": {
+    "prosemirror-commands": "^1.5.2",
+    "prosemirror-dropcursor": "^1.8.2",
+    "prosemirror-history": "^1.4.0",
+    "prosemirror-keymap": "^1.2.2",
+    "prosemirror-model": "^1.19.4",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-tables": "^1.8.5",
+    "prosemirror-transform": "^1.12.0",
+    "prosemirror-view": "^1.41.6",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "docx",
+    "editor",
+    "word",
+    "document",
+    "react",
+    "prosemirror"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

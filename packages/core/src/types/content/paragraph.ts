@@ -90,6 +90,21 @@ export interface Paragraph {
   pPrDel?: TrackedChangeInfo;
   /** Paragraph content */
   content: ParagraphContent[];
+  /**
+   * Block-level bookmark markers that sit as direct children of the parent
+   * block container (`w:body`/`w:tc`/`w:sdtContent`) immediately BEFORE this
+   * paragraph's `w:p`, i.e. `<w:bookmarkStart/><w:p>`. OOXML allows
+   * `w:bookmarkStart`/`w:bookmarkEnd` between paragraphs; the block content
+   * model only carries paragraphs/tables/SDTs, so these markers ride on the
+   * adjacent block to survive the round trip. Side (leading vs trailing) is
+   * chosen from the marker's position so start/end nesting is preserved.
+   */
+  leadingBlockMarkers?: (BookmarkStart | BookmarkEnd)[];
+  /**
+   * Block-level bookmark markers that sit immediately AFTER this paragraph's
+   * `w:p` (e.g. `<w:p></w:p><w:bookmarkEnd/>`). See {@link leadingBlockMarkers}.
+   */
+  trailingBlockMarkers?: (BookmarkStart | BookmarkEnd)[];
   /** Computed list rendering (if this is a list item) */
   listRendering?: ListRendering;
   /** Word's cached layout says this paragraph started on a new rendered page. */

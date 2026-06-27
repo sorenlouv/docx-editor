@@ -119,11 +119,13 @@ export interface DocxEditorProps {
 
 // @public
 export interface DocxEditorRef {
+    acceptChange: (revisionId: number) => boolean;
     addComment: (options: {
         paraId: string;
         text: string;
         author: string;
         search?: string;
+        commentId?: number;
     }) => number | null;
     applyFormatting: (options: {
         paraId: string;
@@ -197,7 +199,11 @@ export interface DocxEditorRef {
         search: string;
         replaceWith: string;
         author: string;
+        revisionId?: number;
     }) => boolean;
+    // (undocumented)
+    redo: () => boolean;
+    rejectChange: (revisionId: number) => boolean;
     removeContentControl: (filter: ContentControlFilter, options?: {
         force?: boolean;
         keepContent?: boolean;
@@ -224,6 +230,7 @@ export interface DocxEditorRef {
         styleId: string;
     }) => boolean;
     setZoom: (zoom: number) => void;
+    undo: () => boolean;
 }
 
 // @public

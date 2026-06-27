@@ -5,7 +5,7 @@
  */
 
 import type { Run } from './run';
-import type { Hyperlink, SimpleField, ComplexField } from './link';
+import type { Hyperlink, SimpleField, ComplexField, BookmarkStart, BookmarkEnd } from './link';
 import type { MathEquation } from './math';
 import type { BlockContent } from './section';
 
@@ -135,4 +135,16 @@ export interface BlockSdt {
   properties: SdtProperties;
   /** Block content inside the control */
   content: BlockContent[];
+  /**
+   * Block-level bookmark markers that sit as direct children of the parent
+   * block container immediately BEFORE this control's `w:sdt`, i.e.
+   * `<w:bookmarkStart/><w:sdt>`. See {@link Paragraph.leadingBlockMarkers}.
+   */
+  leadingBlockMarkers?: (BookmarkStart | BookmarkEnd)[];
+  /**
+   * Block-level bookmark markers that sit immediately AFTER this control's
+   * `w:sdt` (e.g. `<w:sdt></w:sdt><w:bookmarkEnd/>`). See
+   * {@link Paragraph.leadingBlockMarkers}.
+   */
+  trailingBlockMarkers?: (BookmarkStart | BookmarkEnd)[];
 }

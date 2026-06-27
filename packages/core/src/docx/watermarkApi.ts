@@ -50,7 +50,7 @@ function removeFromAllHeaders(doc: Document): Document {
   const next = new Map<string, HeaderFooter>();
   for (const [rId, hf] of headers) {
     if (hf.watermark) {
-      const { watermark: _omit, ...rest } = hf;
+      const { watermark: _omit, verbatimXml: _drop, ...rest } = hf;
       next.set(rId, rest);
       changed = true;
     } else {
@@ -72,7 +72,7 @@ function setOnAllHeaders(doc: Document, watermark: Watermark): Document {
   if (!headers || headers.size === 0) return doc;
   const next = new Map<string, HeaderFooter>();
   for (const [rId, hf] of headers) {
-    next.set(rId, { ...hf, watermark: { ...watermark } });
+    next.set(rId, { ...hf, watermark: { ...watermark }, verbatimXml: undefined });
   }
   return { ...doc, package: { ...doc.package, headers: next } };
 }

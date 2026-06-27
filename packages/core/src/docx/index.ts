@@ -15,6 +15,9 @@
 
 // Top-level archive I/O
 export { parseDocx } from './parser';
+export type { ParseOptions, MediaResolver, ProgressCallback } from './parser';
+export { extractMetafileRaster, isMetafileMimeType } from './metafileRaster';
+export type { ExtractedRaster } from './metafileRaster';
 export { parseFontTable } from './fontTableParser';
 export { repackDocx, createDocx, updateMultipleFiles } from './rezip';
 export { attemptSelectiveSave } from './selectiveSave';

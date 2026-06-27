@@ -4,6 +4,7 @@
 
 import type { TableFormatting, TableRowFormatting, TableCellFormatting } from '../formatting';
 import type { Paragraph } from './paragraph';
+import type { BookmarkStart, BookmarkEnd } from './link';
 import type {
   TablePropertyChange,
   TableRowPropertyChange,
@@ -64,4 +65,16 @@ export interface Table {
   columnWidths?: number[];
   /** Table rows */
   rows: TableRow[];
+  /**
+   * Block-level bookmark markers that sit as direct children of the parent
+   * block container immediately BEFORE this table's `w:tbl`, i.e.
+   * `<w:bookmarkStart/><w:tbl>`. See {@link Paragraph.leadingBlockMarkers}.
+   */
+  leadingBlockMarkers?: (BookmarkStart | BookmarkEnd)[];
+  /**
+   * Block-level bookmark markers that sit immediately AFTER this table's
+   * `w:tbl` (e.g. `<w:tbl></w:tbl><w:bookmarkEnd/>`). See
+   * {@link Paragraph.leadingBlockMarkers}.
+   */
+  trailingBlockMarkers?: (BookmarkStart | BookmarkEnd)[];
 }

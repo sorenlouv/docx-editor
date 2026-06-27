@@ -39,6 +39,7 @@ import { serializeConditionalFormatStyle } from './conditionalFormatSerializer';
 import { escapeXml, intAttr } from './xmlUtils';
 import { serializeBorder } from './borderSerializer';
 import { serializeTableGridForTable } from './tableGrid';
+import { wrapBlockMarkers } from './blockMarkerSerializer';
 
 function normalizeTrackedChangeInfo(info: { id: number; author: string; date?: string }): {
   id: number;
@@ -663,9 +664,9 @@ function serializeCellContent(content: (Paragraph | Table)[]): string {
 
   for (const item of content) {
     if (item.type === 'paragraph') {
-      parts.push(serializeParagraph(item));
+      parts.push(wrapBlockMarkers(item, serializeParagraph(item)));
     } else if (item.type === 'table') {
-      parts.push(serializeTable(item));
+      parts.push(wrapBlockMarkers(item, serializeTable(item)));
     }
   }
 
